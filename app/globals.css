@@ -2547,6 +2547,41 @@ kbd {
   margin-top: 4px;
 }
 
+/* ── Inline audit result in editor ── */
+.inline-audit-result {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+}
+
+.inline-audit-score {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.inline-audit-score strong {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.inline-audit-score span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.inline-audit-result p {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* ── Add bullet button ── */
 .resume-add-bullet-btn {
   display: inline-flex;

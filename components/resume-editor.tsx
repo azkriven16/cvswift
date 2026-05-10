@@ -1,8 +1,11 @@
 "use client";
 
-import { ArrowUp, Download, FileText, Link, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { ArrowUp, Download, FileText, Link, Plus, Save, Trash2, Upload, X, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { normalizeResumeContent, starterResume, templates, type ResumeContent, type ResumeEducation, type ResumeExperience } from "@/lib/resume/schema";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 function tryParseResumeJson(text: string): unknown {
   try { return JSON.parse(text); } catch { return { summary: text }; }
@@ -111,8 +114,11 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [uploading, setUploading] = useState(false);
   const [tailoring, setTailoring] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<{ score: number; summary: string; detected_keywords?: string[]; suggested_keywords?: string[] } | null>(null);
   const [coverLetter, setCoverLetter] = useState("");
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [message, setMessage] = useState("");
   const resumePreviewRef = useRef<HTMLElement | null>(null);
   const selectedElementRef = useRef<HTMLElement | null>(null);
@@ -189,13 +195,14 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
       const response = await fetch("/api/ai/cover-letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeId, jobPost }),
+        body: JSON.stringify({ resumeId, jobPost, turnstileToken }),
       });
       const payload = (await response.json()) as { coverLetter?: string; error?: string };
       if (!response.ok) { setMessage(payload.error || "Could not generate cover letter."); return; }
       if (payload.coverLetter) setCoverLetter(payload.coverLetter);
     } finally {
       setGeneratingCoverLetter(false);
+      setTurnstileToken("");
     }
   }
 
@@ -308,6 +315,31 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
     };
   }, []);
 
+  async function auditResume() {
+    if (!resumeId) { setMessage("Save your resume first to run an audit."); return; }
+    setAuditing(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/audits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeId, turnstileToken }),
+      });
+      const payload = (await response.json()) as {
+        result?: { score: number; summary: string; detected_keywords?: string[]; suggested_keywords?: string[] };
+        error?: string;
+      };
+      if (!response.ok) { setMessage(payload.error || "Could not run audit."); return; }
+      if (payload.result) {
+        setAuditResult(payload.result);
+        setMessage(`Audit complete — score: ${payload.result.score}/100`);
+      }
+    } finally {
+      setAuditing(false);
+      setTurnstileToken("");
+    }
+  }
+
   async function tailorResume() {
     if (!resumeId) {
       setMessage("Save your resume first, then use AI tailoring.");
@@ -323,7 +355,7 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
       const response = await fetch("/api/ai/tailor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeId, jobPost }),
+        body: JSON.stringify({ resumeId, jobPost, turnstileToken }),
       });
       const payload = (await response.json()) as { resume?: ResumeContent; error?: string };
       if (!response.ok) {
@@ -336,6 +368,7 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
       }
     } finally {
       setTailoring(false);
+      setTurnstileToken("");
       setChatInput("");
       setEditSuggestions(randomSuggestions());
     }
@@ -564,6 +597,50 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
             </button>
           </form>
           {tailoring && <p className="form-message" style={{ marginTop: "8px" }}>Tailoring to job post…</p>}
+
+          {TURNSTILE_SITE_KEY && !turnstileToken && (
+            <div style={{ marginTop: "10px" }}>
+              <TurnstileWidget
+                sitekey={TURNSTILE_SITE_KEY}
+                onToken={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+                size="compact"
+              />
+            </div>
+          )}
+
+          {resumeId && (
+            <button
+              type="button"
+              className="button button-secondary"
+              style={{ marginTop: "10px", fontSize: "13px" }}
+              onClick={auditResume}
+              disabled={auditing || Boolean(TURNSTILE_SITE_KEY && !turnstileToken)}
+            >
+              <Zap size={14} />
+              {auditing ? "Auditing…" : "Audit resume"}
+            </button>
+          )}
+
+          {auditResult && (
+            <div className="inline-audit-result">
+              <div className="inline-audit-score">
+                <strong>{auditResult.score}</strong>
+                <span>/100</span>
+              </div>
+              <p>{auditResult.summary}</p>
+              {auditResult.detected_keywords && auditResult.detected_keywords.length > 0 && (
+                <div className="keyword-chips keyword-chips-good" style={{ marginTop: "6px" }}>
+                  {auditResult.detected_keywords.map((kw) => <span key={kw}>{kw}</span>)}
+                </div>
+              )}
+              {auditResult.suggested_keywords && auditResult.suggested_keywords.length > 0 && (
+                <div className="keyword-chips keyword-chips-missing" style={{ marginTop: "4px" }}>
+                  {auditResult.suggested_keywords.map((kw) => <span key={kw}>{kw}</span>)}
+                </div>
+              )}
+            </div>
+          )}
 
           {jobPost.trim() && resumeId && (
             <div className="cover-letter-section">

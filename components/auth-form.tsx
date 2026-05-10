@@ -4,12 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, UserRound } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 export function AuthForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,6 +44,10 @@ export function AuthForm() {
   }
 
   async function continueAsGuest() {
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setMessage("Please complete the challenge first.");
+      return;
+    }
     setStatus("loading");
     setMessage("");
 
@@ -74,7 +82,21 @@ export function AuthForm() {
         <h1>Continue without email verification.</h1>
         <p className="hero-lede">Use a guest account to save resumes and run free AI audits with user and IP limits.</p>
       </div>
-      <button className="button button-primary button-large" disabled={status === "loading"} type="button" onClick={continueAsGuest}>
+      {TURNSTILE_SITE_KEY && (
+        <div style={{ margin: "4px 0" }}>
+          <TurnstileWidget
+            sitekey={TURNSTILE_SITE_KEY}
+            onToken={setTurnstileToken}
+            onExpire={() => setTurnstileToken("")}
+          />
+        </div>
+      )}
+      <button
+        className="button button-primary button-large"
+        disabled={status === "loading" || Boolean(TURNSTILE_SITE_KEY && !turnstileToken)}
+        type="button"
+        onClick={continueAsGuest}
+      >
         <UserRound size={17} />
         {status === "loading" ? "Starting..." : "Continue as guest"}
       </button>

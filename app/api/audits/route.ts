@@ -3,10 +3,15 @@ import { setupError } from "@/lib/env";
 import { readJsonBody } from "@/lib/http";
 import { runResumeAudit } from "@/lib/services/audits";
 import { checkIpAuditLimit, getClientIp } from "@/lib/services/ip-rate-limit";
+import { verifyTurnstile } from "@/lib/services/turnstile";
 
 export async function POST(request: Request) {
-  const { data: body, error: bodyError } = await readJsonBody<{ resumeId?: string }>(request, {});
+  const { data: body, error: bodyError } = await readJsonBody<{ resumeId?: string; turnstileToken?: string }>(request, {});
   if (bodyError) return NextResponse.json({ error: bodyError }, { status: 413 });
+
+  const ip = getClientIp(request);
+  const challenge = await verifyTurnstile(body.turnstileToken, ip);
+  if (!challenge.success) return NextResponse.json({ error: challenge.error }, { status: 400 });
 
   if (!body.resumeId) return NextResponse.json({ error: "resumeId is required" }, { status: 400 });
 

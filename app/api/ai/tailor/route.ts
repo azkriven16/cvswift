@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/supabase/server";
 import { FREE_DAILY_AUDIT_LIMIT } from "@/lib/config";
 import { getResumeById } from "@/lib/services/resumes";
 import { normalizeResumeContent, type ResumeContent } from "@/lib/resume/schema";
+import { verifyTurnstile } from "@/lib/services/turnstile";
+import { getClientIp } from "@/lib/services/ip-rate-limit";
 
 function todayIsoStart() {
   const date = new Date();
@@ -26,11 +28,15 @@ export async function POST(request: Request) {
   const { data: body, error: bodyError } = await readJsonBody<{
     resumeId?: string;
     jobPost?: string;
+    turnstileToken?: string;
   }>(request, {});
 
   if (bodyError) return NextResponse.json({ error: bodyError }, { status: 413 });
   if (!body.resumeId) return NextResponse.json({ error: "resumeId is required" }, { status: 400 });
   if (!body.jobPost?.trim()) return NextResponse.json({ error: "jobPost is required" }, { status: 400 });
+
+  const challenge = await verifyTurnstile(body.turnstileToken, getClientIp(request));
+  if (!challenge.success) return NextResponse.json({ error: challenge.error }, { status: 400 });
 
   const { supabase, user, setupMissing } = await requireUser();
   if (setupMissing.length) return NextResponse.json(setupError(setupMissing), { status: 503 });
