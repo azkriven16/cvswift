@@ -31,7 +31,7 @@ export default async function ResumesPage() {
     <main className="resume-list-page">
       <div className="resume-list-header">
         <h1>My resumes</h1>
-        <Link className="button button-primary" href="/app/resumes/new">
+        <Link className="button button-primary" href="/app/resumes/create">
           <FilePlus2 size={16} />
           New resume
         </Link>
@@ -41,7 +41,7 @@ export default async function ResumesPage() {
         <div className="resume-list-empty">
           <FileText size={32} />
           <p>No resumes yet.</p>
-          <Link className="button button-primary" href="/app/resumes/new">Create your first resume</Link>
+          <Link className="button button-primary" href="/app/resumes/create">Create your first resume</Link>
         </div>
       ) : (
         <div className="resume-list-grid">

@@ -83,7 +83,7 @@ export function AuthForm() {
         <p className="hero-lede">Use a guest account to save resumes and run free AI audits with user and IP limits.</p>
       </div>
       {TURNSTILE_SITE_KEY && (
-        <div style={{ margin: "4px 0" }}>
+        <div style={{ margin: "4px 0", display: "flex", justifyContent: "center" }}>
           <TurnstileWidget
             sitekey={TURNSTILE_SITE_KEY}
             onToken={setTurnstileToken}

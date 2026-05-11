@@ -109,7 +109,7 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
   const [resume, setResume] = useState<ResumeContent>(initialResume ?? starterResume);
   const [jobPost, setJobPost] = useState("");
   const [chatInput, setChatInput] = useState("");
-  const [editSuggestions, setEditSuggestions] = useState(randomSuggestions);
+  const [editSuggestions, setEditSuggestions] = useState(() => editSuggestionPool.slice(0, 2));
   const [selectedContext, setSelectedContext] = useState<SelectedContext>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [uploading, setUploading] = useState(false);
@@ -124,6 +124,10 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
   const selectedElementRef = useRef<HTMLElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const jobPostInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setEditSuggestions(randomSuggestions());
+  }, []);
 
   useEffect(() => {
     if (!templates.some((t) => t.id === templateId)) {
@@ -422,11 +426,16 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
       body: JSON.stringify({ title, targetRole, content: resume }),
     });
 
-    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    const payload = (await response.json().catch(() => ({}))) as { error?: string; resume?: { id?: string } };
 
     if (!response.ok) {
       setSaveState("error");
       setMessage(payload.error || "Could not save resume. Sign in or check setup.");
+      return;
+    }
+
+    if (!resumeId && payload.resume?.id) {
+      window.location.href = `/app/resumes/${payload.resume.id}`;
       return;
     }
 
@@ -599,12 +608,11 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
           {tailoring && <p className="form-message" style={{ marginTop: "8px" }}>Tailoring to job post…</p>}
 
           {TURNSTILE_SITE_KEY && !turnstileToken && (
-            <div style={{ marginTop: "10px" }}>
+            <div style={{ marginTop: "10px", width: "100%" }}>
               <TurnstileWidget
                 sitekey={TURNSTILE_SITE_KEY}
                 onToken={setTurnstileToken}
                 onExpire={() => setTurnstileToken("")}
-                size="compact"
               />
             </div>
           )}
