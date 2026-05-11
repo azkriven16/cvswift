@@ -33,6 +33,11 @@ type TurnstileWidgetProps = {
 export function TurnstileWidget({ sitekey, onToken, onExpire, size = "normal" }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const onTokenRef = useRef(onToken);
+  const onExpireRef = useRef(onExpire);
+
+  onTokenRef.current = onToken;
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
     const SCRIPT_ID = "cf-turnstile-script";
@@ -41,9 +46,9 @@ export function TurnstileWidget({ sitekey, onToken, onExpire, size = "normal" }:
       if (!containerRef.current || !window.turnstile || widgetIdRef.current) return;
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey,
-        callback: onToken,
-        "expired-callback": () => { onExpire?.(); widgetIdRef.current = null; },
-        "error-callback": () => { onExpire?.(); widgetIdRef.current = null; },
+        callback: (token) => onTokenRef.current(token),
+        "expired-callback": () => { onExpireRef.current?.(); widgetIdRef.current = null; },
+        "error-callback": () => { onExpireRef.current?.(); widgetIdRef.current = null; },
         theme: "auto",
         size,
       });
@@ -67,7 +72,7 @@ export function TurnstileWidget({ sitekey, onToken, onExpire, size = "normal" }:
         widgetIdRef.current = null;
       }
     };
-  }, [sitekey, onToken, onExpire, size]);
+  }, [sitekey, size]);
 
   return <div ref={containerRef} />;
 }
