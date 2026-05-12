@@ -1,50 +1,121 @@
-import { Activity, Braces, Gauge, MessageSquareText, ScanLine } from "lucide-react";
+"use client";
+
+import { CheckCircle2, FileDown, Gauge, MessageSquareText, FileText } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
+import { SpotlightCard } from "@/components/spotlight-card";
+
+const auditBars = [
+  { label: "Impact",    score: 82 },
+  { label: "ATS Match", score: 89 },
+  { label: "Clarity",   score: 91 },
+  { label: "Seniority", score: 78 },
+];
+
+const card = (delay: number) => ({
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true as const },
+  transition: { duration: 0.45, delay, ease: [0.16, 1, 0.3, 1] as const },
+});
 
 export function BentoFeatures() {
+  const auditRef = useRef<HTMLDivElement>(null);
+  const auditInView = useInView(auditRef, { once: true, margin: "-60px" });
+
   return (
     <section className="section" id="features">
       <div className="section-heading">
-        <p className="eyebrow">Product depth</p>
-        <h2>Every claim is backed by an interface.</h2>
+        <motion.p
+          className="eyebrow"
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        >
+          Product depth
+        </motion.p>
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.07, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        >
+          Every claim is backed by an interface.
+        </motion.h2>
       </div>
+
       <div className="bento-grid">
-        <article className="bento-card bento-wide">
-          <div className="mini-roadmap" aria-hidden="true">
-            <span /><span /><span /><span />
-          </div>
-          <h3>Roadmaps with live confidence</h3>
-          <p>Project health changes as code, blockers, agent output, and customer signals move underneath it.</p>
-        </article>
-        <article className="bento-card">
-          <Gauge size={22} />
-          <h3>Operating metrics</h3>
-          <p>Velocity, cycle risk, and review load stay visible without building another dashboard.</p>
-        </article>
-        <article className="bento-card bento-dark">
-          <Braces size={22} />
-          <pre>{`orbit.workflow("beta")
-  .route("risk")
-  .ship("friday")`}</pre>
-          <h3>Developer-native automation</h3>
-        </article>
-        <article className="bento-card bento-tall">
-          <ScanLine size={22} />
-          <div className="scan-card" aria-hidden="true">
-            <span /><span /><span />
-          </div>
-          <h3>Readable on mobile</h3>
-          <p>The dense desktop surface compresses into focused cards, not microscopic screenshots.</p>
-        </article>
-        <article className="bento-card">
-          <MessageSquareText size={22} />
-          <h3>Contextual asks</h3>
-          <p>Slack threads, customer requests, and docs become scoped issues with suggested owners.</p>
-        </article>
-        <article className="bento-card bento-wide accent-card">
-          <Activity size={22} />
-          <h3>Motion is the demo</h3>
-          <p>Animations explain state changes: work enters, agents act, risk drops, and the release becomes clearer.</p>
-        </article>
+        {/* AI audit — wide */}
+        <motion.div className="bento-wide" {...card(0)}>
+          <SpotlightCard className="bento-card" spotlightColor="rgba(16, 185, 129, 0.1)">
+            <div className="mini-audit" aria-hidden="true" ref={auditRef}>
+              {auditBars.map((bar, i) => (
+                <div key={bar.label}>
+                  <span>{bar.label}</span>
+                  <motion.i
+                    style={{ width: 0 }}
+                    animate={auditInView ? { width: `${bar.score}%` } : { width: 0 }}
+                    transition={{ duration: 0.85, delay: 0.15 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                </div>
+              ))}
+            </div>
+            <h3>AI audit in seconds</h3>
+            <p>Score your resume across Impact, ATS match, Clarity, and Seniority. Two free AI requests every day.</p>
+          </SpotlightCard>
+        </motion.div>
+
+        {/* AI copilot */}
+        <motion.div {...card(0.08)}>
+          <SpotlightCard className="bento-card" spotlightColor="rgba(16, 185, 129, 0.1)">
+            <MessageSquareText size={22} />
+            <h3>AI copilot</h3>
+            <p>Chat with your resume. Tell the AI what to fix and watch changes apply in real time.</p>
+          </SpotlightCard>
+        </motion.div>
+
+        {/* Terminal — dark */}
+        <motion.div {...card(0.14)}>
+          <SpotlightCard className="bento-card bento-dark" spotlightColor="rgba(255, 255, 255, 0.06)">
+            <Gauge size={22} />
+            <pre>{`> Rewrite bullets with impact\n✓ Rewrote 3 bullets\n> Tighten the summary\n✓ 42 words → 28`}</pre>
+            <h3>Measurable improvements</h3>
+          </SpotlightCard>
+        </motion.div>
+
+        {/* Templates — tall */}
+        <motion.div className="bento-tall" {...card(0.07)}>
+          <SpotlightCard className="bento-card" spotlightColor="rgba(16, 185, 129, 0.1)">
+            <FileText size={22} />
+            <div className="template-stack" aria-hidden="true">
+              <span>ATS Clean</span>
+              <span>Harvard</span>
+              <span>Executive</span>
+              <span>Sidebar</span>
+            </div>
+            <h3>Professional templates</h3>
+            <p>ATS Clean layout available now. Harvard, Executive, and Sidebar templates coming soon.</p>
+          </SpotlightCard>
+        </motion.div>
+
+        {/* Job tailoring */}
+        <motion.div {...card(0.14)}>
+          <SpotlightCard className="bento-card" spotlightColor="rgba(16, 185, 129, 0.1)">
+            <CheckCircle2 size={22} />
+            <h3>Job-specific tailoring</h3>
+            <p>Paste a job posting and get a version of your resume matched to that role.</p>
+          </SpotlightCard>
+        </motion.div>
+
+        {/* ATS PDF — wide accent */}
+        <motion.div className="bento-wide" {...card(0.21)}>
+          <SpotlightCard className="bento-card accent-card" spotlightColor="rgba(255, 255, 255, 0.12)">
+            <FileDown size={22} />
+            <h3>ATS PDF export and public link</h3>
+            <p>Download a clean ATS-ready PDF or share a public resume link — no login required to view.</p>
+          </SpotlightCard>
+        </motion.div>
       </div>
     </section>
   );

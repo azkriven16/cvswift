@@ -1,6 +1,7 @@
 "use client";
 
 import { Command, FileUser, Menu, Moon } from "lucide-react";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const links = ["Product", "Dashboard", "Stack", "Pricing"];
@@ -14,7 +15,12 @@ export function Header() {
   }, [light]);
 
   return (
-    <header className="site-header">
+    <motion.header
+      className="site-header"
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    >
       <a className="brand" href="#top" aria-label="CVSwift home">
         <span className="brand-mark">
           <FileUser size={15} />
@@ -51,6 +57,6 @@ export function Header() {
       <button className="icon-button menu-button" type="button" aria-label="Toggle menu" onClick={() => setOpen(!open)}>
         <Menu size={19} />
       </button>
-    </header>
+    </motion.header>
   );
 }

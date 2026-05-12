@@ -1,19 +1,33 @@
-import { serviceStatuses } from "@/lib/mock-data";
+"use client";
+
+import { motion } from "framer-motion";
+
+const stack = ["Supabase", "OpenRouter", "Gemini", "Cloudflare", "Vercel", "Next.js"];
 
 export function IntegrationStack() {
   return (
-    <section className="section stack-section" id="stack">
-      <div className="section-heading">
-        <p className="eyebrow">Open-source stack</p>
-        <h2>Production integrations, mocked until env is ready.</h2>
-      </div>
-      <div className="stack-grid">
-        {serviceStatuses.map((service) => (
-          <article key={service.name}>
-            <span>{service.status}</span>
-            <strong>{service.name}</strong>
-            <p>{service.detail}</p>
-          </article>
+    <section className="stack-strip" id="stack">
+      <motion.p
+        className="stack-strip-label"
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      >
+        Built on trusted open infrastructure
+      </motion.p>
+      <div className="stack-strip-row">
+        {stack.map((name, i) => (
+          <motion.span
+            key={name}
+            className="stack-strip-chip"
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.35, delay: 0.08 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {name}
+          </motion.span>
         ))}
       </div>
     </section>

@@ -33,7 +33,8 @@ export function hashIp(ip: string) {
   return createHash("sha256").update(ip).digest("hex");
 }
 
-export async function checkIpAuditLimit(ip: string) {
+// Generic IP-based rate limit check. Returns { ipHash } on success or an error object.
+export async function checkIpLimit(ip: string, kind: string, limit: number) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return { error: "setup" as const, setupMissing: ["SUPABASE_SERVICE_ROLE_KEY"] };
 
@@ -42,22 +43,36 @@ export async function checkIpAuditLimit(ip: string) {
     .from("rate_limit_events")
     .select("id", { count: "exact", head: true })
     .eq("ip_hash", ipHash)
-    .eq("kind", "resume_audit")
+    .eq("kind", kind)
     .gte("created_at", todayIsoStart());
 
   if (error) return { error: "database" as const, message: error.message };
-  if ((count ?? 0) >= FREE_DAILY_AUDIT_LIMIT) return { error: "limit" as const, message: "Daily audit limit reached for this network." };
+  if ((count ?? 0) >= limit) return { error: "limit" as const, message: `Daily limit reached for this network.` };
 
   return { ipHash };
 }
 
-export async function recordIpAuditUsage(ipHash: string, userId: string) {
+// Records an IP-based rate limit event.
+export async function recordIpLimit(ipHash: string, userId: string, kind: string) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return;
 
   await supabase.from("rate_limit_events").insert({
     ip_hash: ipHash,
     user_id: userId,
-    kind: "resume_audit",
+    kind,
   });
+}
+
+// Backwards-compatible wrappers used by the audit route.
+export async function checkIpAuditLimit(ip: string) {
+  const result = await checkIpLimit(ip, "resume_audit", FREE_DAILY_AUDIT_LIMIT);
+  if ("error" in result && result.error === "limit") {
+    return { error: "limit" as const, message: "Daily audit limit reached for this network." };
+  }
+  return result;
+}
+
+export async function recordIpAuditUsage(ipHash: string, userId: string) {
+  await recordIpLimit(ipHash, userId, "resume_audit");
 }

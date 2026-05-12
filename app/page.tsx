@@ -7,6 +7,7 @@ import { Pricing } from "@/components/pricing";
 import { CommandPalette } from "@/components/command-palette";
 import { ResumeDashboard } from "@/components/resume-dashboard";
 import { IntegrationStack } from "@/components/integration-stack";
+import { Footer } from "@/components/footer";
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
         <IntegrationStack />
         <Pricing />
       </main>
+      <Footer />
       <CommandPalette />
     </>
   );
