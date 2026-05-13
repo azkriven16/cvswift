@@ -61,19 +61,34 @@ export const templates = [
     description: "Plain one-column resume optimized for applicant tracking systems.",
   },
   {
-    id: "photo-profile",
-    name: "Photo Profile",
-    description: "Profile-forward layout with a photo-ready header.",
+    id: "harvard",
+    name: "Harvard",
+    description: "Traditional academic format with serif type and horizontal rules.",
   },
   {
-    id: "timeline-impact",
-    name: "Timeline Impact",
-    description: "Experience-first layout with timeline-style bullets.",
+    id: "modern-pro",
+    name: "Modern Pro",
+    description: "Clean contemporary layout with a bold accent color.",
+  },
+  {
+    id: "executive",
+    name: "Executive",
+    description: "Premium serif treatment with generous whitespace for senior roles.",
+  },
+  {
+    id: "sidebar",
+    name: "Sidebar",
+    description: "Two-column layout with a colored sidebar for skills and contact.",
   },
   {
     id: "compact-grid",
     name: "Compact Grid",
     description: "Dense two-column layout for fitting more detail on one page.",
+  },
+  {
+    id: "photo-profile",
+    name: "Photo Profile",
+    description: "Profile-forward layout with a photo-ready header.",
   },
 ];
 

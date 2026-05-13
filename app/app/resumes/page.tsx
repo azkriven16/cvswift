@@ -3,8 +3,9 @@ import { SetupRequired } from "@/components/setup-required";
 import { hasSupabaseEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listCurrentUserResumes } from "@/lib/services/resumes";
-import { FilePlus2, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import Link from "next/link";
+import { NewResumeButton } from "@/components/new-resume-button";
 
 function relativeDate(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -31,17 +32,14 @@ export default async function ResumesPage() {
     <main className="resume-list-page">
       <div className="resume-list-header">
         <h1>My resumes</h1>
-        <Link className="button button-primary" href="/app/resumes/create">
-          <FilePlus2 size={16} />
-          New resume
-        </Link>
+        <NewResumeButton className="button button-primary" />
       </div>
 
       {resumes.length === 0 ? (
         <div className="resume-list-empty">
           <FileText size={32} />
           <p>No resumes yet.</p>
-          <Link className="button button-primary" href="/app/resumes/create">Create your first resume</Link>
+          <NewResumeButton className="button button-primary" />
         </div>
       ) : (
         <div className="resume-list-grid">

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Geist, JetBrains_Mono, Space_Grotesk, EB_Garamond, DM_Sans, Playfair_Display, Raleway } from "next/font/google";
 import "./globals.css";
 
 const geist = Geist({
@@ -17,6 +17,26 @@ const jetBrainsMono = JetBrains_Mono({
   variable: "--font-mono",
 });
 
+const ebGaramond = EB_Garamond({
+  subsets: ["latin"],
+  variable: "--font-garamond",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+});
+
+const raleway = Raleway({
+  subsets: ["latin"],
+  variable: "--font-raleway",
+});
+
 export const metadata: Metadata = {
   title: "CVSwift - Open-source AI resume builder",
   description:
@@ -28,9 +48,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const fontVars = [
+    geist.variable,
+    spaceGrotesk.variable,
+    jetBrainsMono.variable,
+    ebGaramond.variable,
+    dmSans.variable,
+    playfairDisplay.variable,
+    raleway.variable,
+  ].join(" ");
+
   return (
     <html lang="en">
-      <body className={`${geist.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable}`}>{children}</body>
+      <body className={fontVars}>{children}</body>
     </html>
   );
 }

@@ -1,14 +1,14 @@
 "use client";
 
-import { FilePlus2, FileText, LogOut, Moon, PanelLeft, Search, Settings2, X } from "lucide-react";
+import { FileText, LogOut, Moon, PanelLeft, Search, Settings2, X } from "lucide-react";
+import type React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { NewResumeButton } from "@/components/new-resume-button";
 
-const mainLinks = [
-  { href: "/app/resumes/create", label: "New resume", icon: FilePlus2 },
-];
+const mainLinks: Array<{ href: string; label: string; icon: React.ElementType }> = [];
 
 type Resume = { id: string; title: string };
 
@@ -112,16 +112,7 @@ export function AppShell({ children, userLabel, recents = [] }: { children: Reac
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary workspace">
-          {mainLinks.map((link) => {
-            const Icon = link.icon;
-            const active = pathname === link.href;
-            return (
-              <Link className={active ? "sidebar-link sidebar-link-active" : "sidebar-link"} href={link.href} key={link.href}>
-                <Icon size={16} />
-                {link.label}
-              </Link>
-            );
-          })}
+          <NewResumeButton className="sidebar-link" />
         </nav>
 
         <div className="sidebar-tools">
@@ -138,7 +129,7 @@ export function AppShell({ children, userLabel, recents = [] }: { children: Reac
         <div className="sidebar-recents">
           <span>Recents</span>
           {recents.length === 0 ? (
-            <Link href="/app/resumes/create" className="sidebar-empty-recent">Start a resume</Link>
+            <a href="/app/resumes/create" className="sidebar-empty-recent">Start a resume</a>
           ) : (
             recents.map((item) => (
               <Link href={`/app/resumes/${item.id}`} key={item.id}>

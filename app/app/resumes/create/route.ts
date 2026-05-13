@@ -1,10 +1,15 @@
-import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { createResume } from "@/lib/services/resumes";
 
-export async function GET() {
+export async function GET(request: Request) {
   const result = await createResume({ title: "Untitled Resume" });
+  const base = new URL(request.url).origin;
+
+  console.log("[create-resume]", JSON.stringify(result));
+
   if ("resume" in result && result.resume) {
-    redirect(`/app/resumes/${result.resume.id}`);
+    return NextResponse.redirect(`${base}/app/resumes/${result.resume.id}`);
   }
-  redirect("/app/resumes");
+
+  return NextResponse.json({ error: result }, { status: 400 });
 }

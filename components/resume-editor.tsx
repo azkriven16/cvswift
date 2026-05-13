@@ -109,7 +109,9 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
   const [resume, setResume] = useState<ResumeContent>(initialResume ?? starterResume);
   const [jobPost, setJobPost] = useState("");
   const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<Array<{ role: "user" | "ai"; text: string }>>([]);
   const [editSuggestions, setEditSuggestions] = useState(() => editSuggestionPool.slice(0, 2));
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [selectedContext, setSelectedContext] = useState<SelectedContext>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [uploading, setUploading] = useState(false);
@@ -119,6 +121,8 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
   const [coverLetter, setCoverLetter] = useState("");
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [undoSnapshot, setUndoSnapshot] = useState<{ resume: ResumeContent; title: string; targetRole: string } | null>(null);
+  const [previewFlash, setPreviewFlash] = useState(false);
   const [message, setMessage] = useState("");
   const resumePreviewRef = useRef<HTMLElement | null>(null);
   const selectedElementRef = useRef<HTMLElement | null>(null);
@@ -179,6 +183,16 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
 
   function removeEducation(index: number) {
     setResume((current) => ({ ...current, education: current.education.filter((_, i) => i !== index) }));
+  }
+
+  function undoLastEdit() {
+    if (!undoSnapshot) return;
+    setResume(undoSnapshot.resume);
+    setTitle(undoSnapshot.title);
+    setTargetRole(undoSnapshot.targetRole);
+    setUndoSnapshot(null);
+    setChatHistory((h) => [...h, { role: "ai", text: "Edit undone." }]);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
   function addBulletAt(expIndex: number) {
@@ -378,39 +392,67 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
     }
   }
 
-  function runCopilot() {
-    const prompt = `${chatInput.trim()} ${selectedContext?.text ?? ""}`.toLowerCase();
-    if (!prompt.trim() && !jobPost.trim()) return;
+  async function runCopilot(overrideInstruction?: string) {
+    const instruction = overrideInstruction ?? `${chatInput.trim()} ${selectedContext?.text ?? ""}`.trim();
+    if (!instruction && !jobPost.trim()) return;
 
-    if (jobPost.trim()) {
+    if (jobPost.trim() && !instruction) {
       void tailorResume();
       return;
     }
 
-    if (prompt.includes("summary")) {
-      updateResume({
-        summary: `${targetRole} focused on accessible, performant product experiences. Builds clean React and Next.js interfaces, sharpens ambiguous requirements, and ships polished workflows with strong attention to detail.`,
-      });
-      setMessage("Updated the summary.");
-    } else if (prompt.includes("bullet") || prompt.includes("impact")) {
-      const first = resume.experience[0];
-      if (first) {
-        updateExperienceAt(0, {
-          bullets: [
-            "Shipped reusable UI patterns that improved product consistency across core workflows.",
-            "Reduced avoidable client-side rendering and improved perceived performance for key dashboards.",
-            "Partnered with design to deliver responsive, accessible interfaces across mobile and desktop.",
-          ],
-        });
-      }
-      setMessage("Reworked the experience bullets.");
-    } else {
-      updateResume({ headline: `${targetRole || "Software Engineer"} | React, Next.js, TypeScript` });
-      setMessage("Polished the headline for the target role.");
-    }
-
+    setTailoring(true);
+    setMessage("");
     setChatInput("");
-    setEditSuggestions(randomSuggestions());
+    setChatHistory((h) => [...h, { role: "user", text: instruction }]);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+
+    try {
+      const res = await fetch("/api/ai/copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instruction, resume, title, targetRole }),
+      });
+
+      const data = (await res.json()) as {
+        resume?: ResumeContent;
+        title?: string;
+        targetRole?: string;
+        message?: string;
+        error?: string;
+      };
+
+      const aiMessage = !res.ok ? (data.error ?? "Something went wrong.") : (data.message ?? "Done.");
+
+      if (res.ok) {
+        setUndoSnapshot({ resume, title, targetRole });
+
+        const newResume = data.resume ?? resume;
+        const newTitle = data.title ?? title;
+        const newTargetRole = data.targetRole ?? targetRole;
+
+        if (data.resume) setResume(newResume);
+        if (data.title) setTitle(newTitle);
+        if (data.targetRole) setTargetRole(newTargetRole);
+
+        setPreviewFlash(true);
+        setTimeout(() => setPreviewFlash(false), 900);
+
+        if (resumeId) {
+          fetch(`/api/resumes/${resumeId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: newTitle, targetRole: newTargetRole, content: newResume }),
+          }).catch(() => undefined);
+        }
+      }
+
+      setChatHistory((h) => [...h, { role: "ai", text: aiMessage }]);
+      setEditSuggestions(randomSuggestions());
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    } finally {
+      setTailoring(false);
+    }
   }
 
   async function saveResume() {
@@ -444,37 +486,27 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
   }
 
   return (
-    <section className="resume-ai-page resume-ai-page-results">
-      {message && <p className={saveState === "error" ? "form-message form-error" : "form-message"}>{message}</p>}
-
-      <div className="resume-meta-row">
-        <input
-          className="input"
-          type="text"
-          aria-label="Resume title"
-          placeholder="Resume title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <input
-          className="input"
-          type="text"
-          aria-label="Target role"
-          placeholder="Target role (e.g. Senior Frontend Engineer)"
-          value={targetRole}
-          onChange={(e) => setTargetRole(e.target.value)}
-        />
-      </div>
-
-      <div className="result-mode-toolbar">
-        <div className="template-switcher">
-          {templates.map((template) => (
-            <button className={template.id === templateId ? "active" : ""} key={template.id} type="button" onClick={() => setTemplateId(template.id)}>
-              {template.name}
-            </button>
-          ))}
+    <section className="editor-shell">
+      <header className="editor-topbar">
+        <div className="editor-topbar-meta">
+          <input
+            className="input"
+            type="text"
+            aria-label="Resume title"
+            placeholder="Resume title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            className="input"
+            type="text"
+            aria-label="Target role"
+            placeholder="Target role"
+            value={targetRole}
+            onChange={(e) => setTargetRole(e.target.value)}
+          />
         </div>
-        <div className="result-toolbar-actions">
+        <div className="editor-topbar-actions">
           <input
             ref={uploadInputRef}
             type="file"
@@ -484,7 +516,7 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
           />
           <button className="button button-secondary" type="button" onClick={() => uploadInputRef.current?.click()} disabled={uploading}>
             <Upload size={16} />
-            {uploading ? "Loading..." : "Upload Resume"}
+            {uploading ? "Loading..." : "Upload"}
           </button>
           <button
             className="button button-secondary"
@@ -518,171 +550,200 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
             {saveState === "saving" ? "Saving..." : "Save"}
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="resume-result-grid">
+      {message && <p className={saveState === "error" ? "form-message form-error editor-message" : "form-message editor-message"}>{message}</p>}
+
+      <div className="editor-body">
         <section className="assistant-panel">
-          <div className="assistant-panel-head">
-            <div>
+          <div className="assistant-panel-top">
+            <div className="assistant-panel-head">
               <span className="panel-kicker">AI editor</span>
-              <h2>Tailor to a job post.</h2>
-            </div>
-            {!resumeId && (
-              <button
-                type="button"
-                className="button button-secondary"
-                style={{ fontSize: "12px", minHeight: "28px", padding: "0 10px", alignSelf: "flex-start" }}
-                onClick={() => { setResume(sampleResume); setJobPost(sampleJobPost); setTitle("Sample Resume"); setTargetRole("Senior Frontend Engineer"); setMessage("Sample data loaded. Try AI tailoring or edit inline."); }}
-              >
-                Try sample data
-              </button>
-            )}
-          </div>
-
-          <div className="job-post-section">
-            <div className="job-post-section-header">
-              <label htmlFor="job-post-input">Job posting</label>
-              <div>
-                <input
-                  ref={jobPostInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt,image/*"
-                  style={{ display: "none" }}
-                  onChange={handleJobPostUpload}
-                />
+              {!resumeId && (
                 <button
                   type="button"
                   className="button button-secondary"
-                  style={{ fontSize: "12px", minHeight: "28px", padding: "0 9px" }}
-                  onClick={() => jobPostInputRef.current?.click()}
-                  disabled={uploading}
+                  style={{ fontSize: "12px", minHeight: "26px", padding: "0 9px" }}
+                  onClick={() => { setResume(sampleResume); setJobPost(sampleJobPost); setTitle("Sample Resume"); setTargetRole("Senior Frontend Engineer"); setMessage("Sample data loaded. Try AI tailoring or edit inline."); }}
                 >
-                  <Upload size={13} />
-                  Upload
+                  Try sample
                 </button>
-              </div>
-            </div>
-            <textarea
-              id="job-post-input"
-              className="resume-source-input job-post-textarea"
-              placeholder="Paste a job description here — AI will tailor your resume to match its keywords and requirements."
-              value={jobPost}
-              onChange={(e) => setJobPost(e.target.value)}
-            />
-          </div>
-
-          <form className="inline-chat" onSubmit={(event) => { event.preventDefault(); runCopilot(); }}>
-            {selectedContext && (
-              <div className="selection-context-chip" aria-label="Selected resume text">
-                <FileText size={15} />
-                <span>{selectedContext.lineCount} {selectedContext.lineCount === 1 ? "line" : "lines"} selected</span>
-                <button type="button" aria-label="Clear selected resume text" onClick={clearSelectedContext}>
-                  <X size={13} />
-                </button>
-              </div>
-            )}
-            <div className="prompt-suggestions" aria-label="Suggested resume edits">
-              {editSuggestions.map((suggestion) => (
-                <button
-                  type="button"
-                  key={suggestion}
-                  onClick={() => {
-                    setChatInput(suggestion);
-                    setEditSuggestions(randomSuggestions());
-                  }}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-            <input
-              aria-label="Ask for a resume edit"
-              placeholder={jobPost.trim() ? "Click ↑ to tailor to the job post above, or type a specific edit." : "Try: emphasize job keywords, rewrite bullets for impact, or tighten the summary."}
-              value={chatInput}
-              onChange={(event) => setChatInput(event.target.value)}
-            />
-            <button className="icon-button" type="submit" aria-label="Apply AI edit" disabled={tailoring}>
-              <ArrowUp size={16} />
-            </button>
-          </form>
-          {tailoring && <p className="form-message" style={{ marginTop: "8px" }}>Tailoring to job post…</p>}
-
-          {TURNSTILE_SITE_KEY && !turnstileToken && (
-            <div style={{ marginTop: "10px", width: "100%" }}>
-              <TurnstileWidget
-                sitekey={TURNSTILE_SITE_KEY}
-                onToken={setTurnstileToken}
-                onExpire={() => setTurnstileToken("")}
-              />
-            </div>
-          )}
-
-          {resumeId && (
-            <button
-              type="button"
-              className="button button-secondary"
-              style={{ marginTop: "10px", fontSize: "13px" }}
-              onClick={auditResume}
-              disabled={auditing || Boolean(TURNSTILE_SITE_KEY && !turnstileToken)}
-            >
-              <Zap size={14} />
-              {auditing ? "Auditing…" : "Audit resume"}
-            </button>
-          )}
-
-          {auditResult && (
-            <div className="inline-audit-result">
-              <div className="inline-audit-score">
-                <strong>{auditResult.score}</strong>
-                <span>/100</span>
-              </div>
-              <p>{auditResult.summary}</p>
-              {auditResult.detected_keywords && auditResult.detected_keywords.length > 0 && (
-                <div className="keyword-chips keyword-chips-good" style={{ marginTop: "6px" }}>
-                  {auditResult.detected_keywords.map((kw) => <span key={kw}>{kw}</span>)}
-                </div>
-              )}
-              {auditResult.suggested_keywords && auditResult.suggested_keywords.length > 0 && (
-                <div className="keyword-chips keyword-chips-missing" style={{ marginTop: "4px" }}>
-                  {auditResult.suggested_keywords.map((kw) => <span key={kw}>{kw}</span>)}
-                </div>
               )}
             </div>
-          )}
 
-          {jobPost.trim() && resumeId && (
-            <div className="cover-letter-section">
-              <div className="cover-letter-header">
-                <span>Cover letter</span>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  style={{ fontSize: "12px", minHeight: "28px", padding: "0 9px" }}
-                  onClick={generateCoverLetter}
-                  disabled={generatingCoverLetter}
-                >
-                  {generatingCoverLetter ? "Generating…" : coverLetter ? "Regenerate" : "Generate"}
-                </button>
-              </div>
-              {coverLetter && (
-                <>
-                  <textarea className="cover-letter-output" readOnly value={coverLetter} rows={10} />
+            <div className="job-post-section">
+              <div className="job-post-section-header">
+                <label htmlFor="job-post-input">Job posting</label>
+                <div>
+                  <input
+                    ref={jobPostInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt,image/*"
+                    style={{ display: "none" }}
+                    onChange={handleJobPostUpload}
+                  />
                   <button
                     type="button"
                     className="button button-secondary"
-                    style={{ fontSize: "12px", minHeight: "28px", padding: "0 9px", marginTop: "6px" }}
-                    onClick={() => void navigator.clipboard.writeText(coverLetter).then(() => setMessage("Cover letter copied."))}
+                    style={{ fontSize: "12px", minHeight: "26px", padding: "0 9px" }}
+                    onClick={() => jobPostInputRef.current?.click()}
+                    disabled={uploading}
                   >
-                    Copy
+                    <Upload size={13} />
+                    Upload
                   </button>
-                </>
-              )}
+                </div>
+              </div>
+              <textarea
+                id="job-post-input"
+                className="resume-source-input job-post-textarea"
+                placeholder="Paste a job description — AI will tailor your resume to match its keywords."
+                value={jobPost}
+                onChange={(e) => setJobPost(e.target.value)}
+              />
             </div>
-          )}
+          </div>
+
+          <div className="chat-area">
+            {chatHistory.map((msg, i) => (
+              <div key={i} className={msg.role === "user" ? "chat-bubble chat-bubble-user" : "chat-bubble chat-bubble-ai"}>
+                {msg.text}
+              </div>
+            ))}
+            {tailoring && <div className="chat-bubble chat-bubble-ai chat-bubble-typing"><span /><span /><span /></div>}
+            {undoSnapshot && !tailoring && (
+              <button type="button" className="chat-undo-btn" onClick={undoLastEdit}>
+                ↩ Undo last edit
+              </button>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="chat-input-area">
+            <form className="inline-chat" onSubmit={(event) => { event.preventDefault(); void runCopilot(); }}>
+              {selectedContext && (
+                <div className="selection-context-chip" aria-label="Selected resume text">
+                  <FileText size={15} />
+                  <span>{selectedContext.lineCount} {selectedContext.lineCount === 1 ? "line" : "lines"} selected</span>
+                  <button type="button" aria-label="Clear selected resume text" onClick={clearSelectedContext}>
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+              <div className="prompt-suggestions" aria-label="Suggested resume edits">
+                {editSuggestions.map((suggestion) => (
+                  <button
+                    type="button"
+                    key={suggestion}
+                    onClick={() => {
+                      setChatInput(suggestion);
+                      setEditSuggestions(randomSuggestions());
+                      void runCopilot(suggestion);
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+              <input
+                aria-label="Ask for a resume edit"
+                placeholder={jobPost.trim() ? "Type an edit, or click ↑ to tailor to the job post." : "Try: rewrite bullets for impact, tighten the summary…"}
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+              />
+              <button className="icon-button" type="submit" aria-label="Apply AI edit" disabled={tailoring}>
+                <ArrowUp size={16} />
+              </button>
+            </form>
+            {tailoring && <p className="form-message" style={{ marginTop: "8px" }}>Tailoring…</p>}
+
+            {TURNSTILE_SITE_KEY && !turnstileToken && (
+              <div style={{ marginTop: "10px", width: "100%" }}>
+                <TurnstileWidget
+                  sitekey={TURNSTILE_SITE_KEY}
+                  onToken={setTurnstileToken}
+                  onExpire={() => setTurnstileToken("")}
+                />
+              </div>
+            )}
+
+            {resumeId && (
+              <button
+                type="button"
+                className="button button-secondary"
+                style={{ marginTop: "10px", fontSize: "13px", width: "100%" }}
+                onClick={auditResume}
+                disabled={auditing || Boolean(TURNSTILE_SITE_KEY && !turnstileToken)}
+              >
+                <Zap size={14} />
+                {auditing ? "Auditing…" : "Audit resume"}
+              </button>
+            )}
+
+            {auditResult && (
+              <div className="inline-audit-result">
+                <div className="inline-audit-score">
+                  <strong>{auditResult.score}</strong>
+                  <span>/100</span>
+                </div>
+                <p>{auditResult.summary}</p>
+                {auditResult.detected_keywords && auditResult.detected_keywords.length > 0 && (
+                  <div className="keyword-chips keyword-chips-good" style={{ marginTop: "6px" }}>
+                    {auditResult.detected_keywords.map((kw) => <span key={kw}>{kw}</span>)}
+                  </div>
+                )}
+                {auditResult.suggested_keywords && auditResult.suggested_keywords.length > 0 && (
+                  <div className="keyword-chips keyword-chips-missing" style={{ marginTop: "4px" }}>
+                    {auditResult.suggested_keywords.map((kw) => <span key={kw}>{kw}</span>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {jobPost.trim() && resumeId && (
+              <div className="cover-letter-section">
+                <div className="cover-letter-header">
+                  <span>Cover letter</span>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    style={{ fontSize: "12px", minHeight: "28px", padding: "0 9px" }}
+                    onClick={generateCoverLetter}
+                    disabled={generatingCoverLetter}
+                  >
+                    {generatingCoverLetter ? "Generating…" : coverLetter ? "Regenerate" : "Generate"}
+                  </button>
+                </div>
+                {coverLetter && (
+                  <>
+                    <textarea className="cover-letter-output" readOnly value={coverLetter} rows={10} />
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      style={{ fontSize: "12px", minHeight: "28px", padding: "0 9px", marginTop: "6px" }}
+                      onClick={() => void navigator.clipboard.writeText(coverLetter).then(() => setMessage("Cover letter copied."))}
+                    >
+                      Copy
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </section>
 
         <aside className="resume-output-panel">
-          <article ref={resumePreviewRef} className={`resume-preview ${templateId}`}>
+          <div className="resume-output-header">
+            <div className="template-switcher">
+              {templates.map((template) => (
+                <button className={template.id === templateId ? "active" : ""} key={template.id} type="button" onClick={() => setTemplateId(template.id)}>
+                  {template.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="resume-output-body">
+          <article ref={resumePreviewRef} className={`resume-preview ${templateId}${previewFlash ? " resume-preview-flash" : ""}`}>
             <header>
               <h2
                 contentEditable
@@ -838,6 +899,7 @@ export function ResumeEditor({ initialResume, resumeId, title: initialTitle, tar
               ))}
             </section>
           </article>
+          </div>
         </aside>
       </div>
     </section>
