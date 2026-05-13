@@ -1,7 +1,7 @@
 "use client";
 
-import { FileUser } from "lucide-react";
 import { motion } from "framer-motion";
+import { BrandMark } from "@/components/brand-mark";
 
 const links = [
   {
@@ -33,7 +33,7 @@ export function Footer() {
       <div className="footer-inner">
         <div className="footer-brand">
           <a className="brand" href="#top" aria-label="CVSwift home">
-            <span className="brand-mark"><FileUser size={15} /></span>
+            <span className="brand-mark"><BrandMark size={24} /></span>
             <span>CVSwift</span>
           </a>
           <p>Open-source AI resume workspace.<br />Free forever for job seekers.</p>

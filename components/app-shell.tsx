@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { NewResumeButton } from "@/components/new-resume-button";
+import { BrandMark } from "@/components/brand-mark";
 
 const mainLinks: Array<{ href: string; label: string; icon: React.ElementType }> = [];
 
@@ -102,7 +103,7 @@ export function AppShell({ children, userLabel, recents = [] }: { children: Reac
         <div className="sidebar-brand-row">
           <Link className="brand" href="/app/resumes/new" aria-label="CVSwift workspace">
             <span className="brand-mark">
-              <FileText size={15} />
+              <BrandMark size={24} />
             </span>
             <span>CVSwift</span>
           </Link>

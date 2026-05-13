@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { AppShell } from "@/components/app-shell";
 import { hasSupabaseEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listCurrentUserResumes } from "@/lib/services/resumes";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   let userEmail: string | undefined;

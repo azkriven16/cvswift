@@ -311,13 +311,12 @@ button {
 }
 
 .brand-mark {
-  width: 31px;
-  height: 31px;
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 9px;
-  background: var(--accent);
-  color: var(--ink);
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  overflow: hidden;
   box-shadow: 0 0 34px color-mix(in srgb, var(--accent) 28%, transparent);
+  line-height: 0;
 }
 
 .nav-links {

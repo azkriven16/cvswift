@@ -38,9 +38,41 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: "CVSwift - Open-source AI resume builder",
+  title: {
+    default: "CVSwift — Free AI Resume Builder",
+    template: "%s — CVSwift",
+  },
   description:
-    "Open-source resume builder with free audits, Supabase auth, Stripe Pro billing, and mock-ready AI services.",
+    "Free, open-source AI resume builder. Get instant AI audits, job-specific tailoring, and ATS-ready PDF export. No credit card required.",
+  metadataBase: new URL("https://cv-swift.vercel.app"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "CVSwift",
+    title: "CVSwift — Free AI Resume Builder",
+    description:
+      "Free, open-source AI resume builder. Get instant AI audits, job-specific tailoring, and ATS-ready PDF export. No credit card required.",
+    url: "https://cv-swift.vercel.app",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "CVSwift — Free AI Resume Builder" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CVSwift — Free AI Resume Builder",
+    description:
+      "Free, open-source AI resume builder. Get instant AI audits, job-specific tailoring, and ATS-ready PDF export. No credit card required.",
+    images: ["/opengraph-image"],
+  },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

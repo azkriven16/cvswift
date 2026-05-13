@@ -1,5 +1,27 @@
+import type { Metadata } from "next";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { normalizeResumeContent } from "@/lib/resume/schema";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) return {};
+
+  const { data: row } = await supabase.from("resumes").select("content").eq("id", id).single();
+  if (!row) return {};
+
+  const resume = normalizeResumeContent(row.content);
+  const name = resume.name || "Resume";
+
+  return {
+    title: `${name} — Resume`,
+    description: resume.headline || `View ${name}'s resume, shared via CVSwift.`,
+    openGraph: {
+      title: `${name} — Resume`,
+      description: resume.headline || `View ${name}'s resume, shared via CVSwift.`,
+    },
+  };
+}
 
 export default async function PublicResumePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

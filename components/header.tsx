@@ -1,8 +1,9 @@
 "use client";
 
-import { Command, FileUser, Menu, Moon } from "lucide-react";
+import { Command, Menu, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { BrandMark } from "@/components/brand-mark";
 
 const links = ["Product", "Dashboard", "Stack", "Pricing"];
 
@@ -23,7 +24,7 @@ export function Header() {
     >
       <a className="brand" href="#top" aria-label="CVSwift home">
         <span className="brand-mark">
-          <FileUser size={15} />
+          <BrandMark size={24} />
         </span>
         <span>CVSwift</span>
       </a>
